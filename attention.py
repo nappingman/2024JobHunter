@@ -167,7 +167,7 @@ class DecoderLayer(nn.Module):
         
     def forward(self, tar, memo, self_attn_mask, cross_attn_mask=None):
         y, attn_self = self.self_attn(q=tar, k=tar, v=tar, attn_mask=self_attn_mask)
-        y, attn_cross = self.cross_attn(q=memo, k=memo, v=y, attn_mask=self_attn_mask)
+        y, attn_cross = self.cross_attn(q=y, k=memo, v=memo, attn_mask=self_attn_mask)
         
         y = self.fc(y)
         
