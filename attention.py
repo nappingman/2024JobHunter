@@ -18,6 +18,29 @@ def get_subsequent_mask(seq):
     seq_mask = (1 - torch.ones(seq_len, seq_len).triu(diagonal=1)).bool().unsqueeze(0)
     return seq_mask
 
+def scaled_dot_product_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None) -> torch.Tensor:
+    B, L, D = query.shape
+    scale_factor = D ** -0.5 if scale is None else None
+    attn_bias = torch.zeros(L, D, dtype=query.dtype)
+    
+    if is_causal:
+        assert attn_mask is None
+        temp_mask = torch.ones(L, D, dtype=torch.bool).tril(diagonal=0)
+        attn_bias = attn_bias.masked_fill(temp_mask.logical_not(), float("-inf"))
+        attn_bias.to(query.dtype)
+    
+    if attn_mask is not None:
+        if attn_mask.dtype == torch.bool:
+            attn_bias = attn_bias.masked_fill(attn_mask.logical_not(), float("-inf"))
+        else:
+            attn_bias += attn_mask
+    attn_weights = query @ key.transpose(-2, -1) * scale_factor
+    attn_weights += attn_bias
+    attn_weights = torch.softmax(attn_weights, dim=-1)
+    attn_weights = torch.dropout(attn_weights, dropout_p, train=True)
+
+    return attn_weights @ value
+
 class SinusoidalPE(nn.Module):
     def __init__(self, 
                  embed_dim=512,
